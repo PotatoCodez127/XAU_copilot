@@ -31,11 +31,11 @@ def evaluate_trade_setup(market_state, rag_context, graph_context):
     CRITICAL RULES:
     1. The Graph provides multiple Stop Loss options. You must IGNORE 'DANGER NODES' and actively SELECT a 'SAFEPATH' or 'NEUTRAL PATH' if one exists.
     2. Only output a Decision of "PASS" if ALL graph paths are Danger Nodes, OR if the RAG history overwhelmingly shows strong reversals against your intended direction.
-    3. REGIME BAN 1: If the Session is 'Asian_Consolidation' OR 'Dead_Zone', you MUST output "PASS". These lack institutional volume.
-    4. REGIME BAN 2: If the Day of Week is 'Monday', you MUST output "PASS". Mondays lack established weekly macro momentum.
-    5. REGIME BAN 3: If the Session is 'London_Open', you MUST output "PASS". This session is historically highly toxic for your algorithms. Wait for the NY_London_Overlap.
-    6. MACRO ALIGNMENT BAN: Gold (XAUUSD) is inversely correlated with the US Dollar (DXY). You MUST output "PASS" on any LONG setup if DXY is rising AND the 1H Trend is Bearish. You MUST output "PASS" on any SHORT setup if DXY is falling AND the 1H Trend is Bullish. Do not attempt to flip directions, simply PASS to preserve capital.
-    7. RAG OVERRIDE (CHOP PROTECTION): If the Topological Graph shows a high-win-rate SAFEPATH, but the RAG context warns of "chop" or "consolidation", you MUST output "PASS". Capital preservation is priority; do not execute into choppy markets.
+    3. REGIME BAN 1: If the Session is 'Asian_Consolidation' AND the Strategy is 'Breakout', you MUST output "PASS". Breakouts in Asia are liquidity traps.
+    4. REGIME BAN 2: If the Session is 'Dead_Zone' AND the Strategy is 'Trend_Following', you MUST output "PASS". There is not enough momentum.
+    5. SURGICAL BAN 1: If the Day of Week is 'Monday', you MUST output "PASS". Mondays lack established weekly macro momentum.
+    6. SURGICAL BAN 2: If the Session is 'London_Open', you MUST output "PASS". This session is historically toxic. Wait for the NY_London_Overlap.
+    7. RAG OVERRIDE: If the Topological Graph shows a high-win-rate SAFEPATH, but the RAG context warns of "chop" or "consolidation", you must either "PASS" or drastically reduce the Recommended_Risk_Pct to a maximum of 0.2. Do not blindly execute into chop with full size.
     8. You MUST output your final answer as a raw JSON object. Do not wrap it in markdown.
 
     REQUIRED JSON SCHEMA:
