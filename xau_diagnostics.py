@@ -54,11 +54,15 @@ def run_diagnostics(ledger_path="data/omni_ledger.csv"):
         print(f"Node '{node}': {count} Losses ({(count/total_losses)*100:.1f}% of all losses)")
 
     # 3. AI Reasoning Audit
-    print(f"\n{Color.YELLOW}--- 🧠 AI REASONING AUDIT (Top 3 Worst Trades by Pips) ---{Color.RESET}")
-    worst_trades = losers.sort_values(by='Pips', ascending=True).head(3)
+    print(f"\n{Color.YELLOW}--- 🧠 AI REASONING AUDIT (Top 3 Worst Trades) ---{Color.RESET}")
+    
+    # Handle older ledgers that used 'PnL' instead of 'Pips'
+    loss_col = 'Pips' if 'Pips' in df.columns else 'PnL'
+    
+    worst_trades = losers.sort_values(by=loss_col, ascending=True).head(3)
     
     for idx, row in worst_trades.iterrows():
-        print(f"\n[{row['Entry_Time']}] {row['Direction']} (Lost {row['Pips']} Pips)")
+        print(f"\n[{row['Entry_Time']}] {row['Direction']} (Lost {row[loss_col]} {loss_col})")
         print(f"AI Logic: {row['AI_Reasoning']}")
 
 if __name__ == "__main__":

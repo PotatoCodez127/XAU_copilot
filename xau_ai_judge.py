@@ -31,8 +31,10 @@ def evaluate_trade_setup(market_state, rag_context, graph_context):
     CRITICAL RULES:
     1. The Graph provides multiple Stop Loss options. You must IGNORE 'DANGER NODES' and actively SELECT a 'SAFEPATH' or 'NEUTRAL PATH' if one exists.
     2. Only output a Decision of "PASS" if ALL graph paths are Danger Nodes, OR if the RAG history overwhelmingly shows strong reversals against your intended direction.
-    3. If RAG shows 'CHOP / CONSOLIDATION', do not panic. It means the market is slow. You may still EXECUTE but with a lower Confidence and Recommended_Risk_Pct.
-    4. You MUST output your final answer as a raw JSON object. Do not wrap it in markdown.
+    3. REGIME BAN 1: If the Session is 'Asian_Consolidation' AND the Strategy is 'Breakout', you MUST output a Decision of "PASS". Breakouts in Asia are liquidity traps.
+    4. REGIME BAN 2: If the Session is 'Dead_Zone' AND the Strategy is 'Trend_Following', you MUST output a Decision of "PASS". There is not enough momentum.
+    5. RAG OVERRIDE: If the Topological Graph shows a high-win-rate SAFEPATH, but the RAG context warns of "chop" or "consolidation", you must either "PASS" or drastically reduce the Recommended_Risk_Pct to a maximum of 0.2. Do not blindly execute into chop.
+    6. You MUST output your final answer as a raw JSON object. Do not wrap it in markdown.
 
     REQUIRED JSON SCHEMA:
     {
