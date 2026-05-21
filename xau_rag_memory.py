@@ -108,7 +108,7 @@ def query_similar_history(collection, current_tape):
 
 if __name__ == "__main__":
     # 1. Fetch Data using Limb 1
-    matrix = build_macro_matrix(daysback=10) # Pulling 10 days to give the memory bank depth
+    matrix = build_macro_matrix(daysback=30) # Pulling 10 days to give the memory bank depth
     if matrix is not None:
         df = engineer_xau_features(matrix)
         

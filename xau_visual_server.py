@@ -9,7 +9,7 @@ from xau_rag_memory import setup_chroma_db, generate_semantic_tape, populate_mem
 from xau_graph_evaluator import generate_mock_trade_history, build_knowledge_graph
 from xau_ai_judge import evaluate_trade_setup
 
-# NEW: Import the Ledger Accountant
+# Import the Ledger Accountant
 from xau_trade_tracker import TradeTracker
 
 class Color:
@@ -54,7 +54,7 @@ def backtest_simulation_loop():
     print(f"{Color.CYAN}===================================================={Color.RESET}\n")
     
     # --- BOOTSTRAP ALL LIMBS ---
-    matrix = build_macro_matrix(daysback=7)
+    matrix = build_macro_matrix(daysback=30)
     if matrix is None or matrix.empty: return
     df = engineer_xau_features(matrix)
     
@@ -99,7 +99,6 @@ def backtest_simulation_loop():
         # --- PHASE 1: CHECK IF ACTIVE TRADE HIT SL OR TP ---
         closed_trade = tracker.update(candle)
         if closed_trade:
-            # THIS IS THE CRITICAL LINE THAT POPULATES YOUR UI TABLE
             socketio.emit('trade_closed', closed_trade)
         
         # --- PHASE 2: LOOK FOR NEW SETUPS (Only if no trade is active) ---
@@ -136,12 +135,18 @@ def backtest_simulation_loop():
                 if decision == "EXECUTE":
                     entry_price = candle['close']
                     
+                    # -------------------------------------------------------------
+                    # 🎯 BROKER CALIBRATED PIP DISTANCES (1 Pip = $0.10)
+                    # -------------------------------------------------------------
                     if sl_type == "Wide_SL":
-                        sl_distance, tp_distance = 5.00, 10.00
+                        # 60 Pips Risk / 120 Pips Reward
+                        sl_distance, tp_distance = 6.00, 12.00 
                     elif sl_type == "Tight_SL":
-                        sl_distance, tp_distance = 1.50, 3.00
+                        # 20 Pips Risk / 40 Pips Reward
+                        sl_distance, tp_distance = 2.00, 4.00   
                     else: 
-                        sl_distance, tp_distance = 3.00, 6.00
+                        # Medium_SL: 40 Pips Risk / 80 Pips Reward
+                        sl_distance, tp_distance = 4.00, 8.00   
                     
                     if direction == "LONG":
                         sl = entry_price - sl_distance
@@ -169,7 +174,7 @@ def backtest_simulation_loop():
     print(f"\n{Color.CYAN}🛑 Historical Data Replay Complete.{Color.RESET}")
     print(f"{Color.YELLOW}📊 Generating Final Performance Tearsheet...{Color.RESET}")
     
-    # NEW: Fetch the final metrics and push them to the UI
+    # Fetch the final metrics and push them to the UI
     final_metrics = tracker.generate_tearsheet()
     socketio.emit('backtest_complete', final_metrics)
     

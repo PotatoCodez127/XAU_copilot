@@ -39,7 +39,7 @@ def fetch_chunk(symbol, start_str, end_str, api_key):
                 print(f"{Color.RED}❌ Network/Execution Error fetching {symbol} after {max_retries} attempts: {e}{Color.RESET}")
                 return []
 
-def fetch_massive_asset(symbol, daysback=5):
+def fetch_massive_asset(symbol, daysback=30):
     """Fetches data and maps it to a Pandas DataFrame."""
     load_dotenv()
     api_key = os.getenv("MASSIVE_API_KEY")
@@ -69,7 +69,7 @@ def fetch_massive_asset(symbol, daysback=5):
     
     return df[['open', 'high', 'low', 'close', 'volume']]
 
-def build_macro_matrix(daysback=5):
+def build_macro_matrix(daysback=30):
     print(f"{Color.CYAN}📥 Building Macro-Synchronized Matrix...{Color.RESET}")
     
     gold_df = fetch_massive_asset("C:XAUUSD", daysback) 
@@ -117,7 +117,7 @@ def engineer_xau_features(df):
     return df.dropna()
 
 if __name__ == "__main__":
-    matrix = build_macro_matrix(daysback=7)
+    matrix = build_macro_matrix(daysback=30)
     if matrix is not None:
         final_df = engineer_xau_features(matrix)
         
