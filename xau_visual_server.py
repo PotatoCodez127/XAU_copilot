@@ -185,9 +185,110 @@ def backtest_simulation_loop():
     
     print(f"{Color.GREEN}✅ Tearsheet published. Run concluded.{Color.RESET}")
 
+def live_execution_loop():
+    print(f"\n{Color.CYAN}===================================================={Color.RESET}")
+    print(f"{Color.CYAN}🟢 INITIALIZING XAUUSD LIVE FORWARD-TESTING ENGINE{Color.RESET}")
+    print(f"{Color.CYAN}===================================================={Color.RESET}\n")
+    
+    # --- BOOTSTRAP HISTORY (For Charting Context) ---
+    print(f"{Color.YELLOW}Loading historical context...{Color.RESET}")
+    matrix = build_macro_matrix(daysback=7)
+    if matrix is None or matrix.empty: return
+    df = engineer_xau_features(matrix)
+    
+    rag_collection = setup_chroma_db()
+    populate_memory(df, rag_collection)
+    
+    trades_df = generate_mock_trade_history(num_trades=2000)
+    knowledge_graph = build_knowledge_graph(trades_df)
+    tracker = TradeTracker(ledger_path="data/live_omni_ledger.csv") # Separate ledger for live trades
+    
+    socketio.sleep(3.0) 
+    
+    # Push history to the UI
+    history = []
+    for idx, row in df.iterrows():
+        history.append({
+            'time': int(idx.timestamp()),
+            'open': float(row['open']), 'high': float(row['high']),
+            'low': float(row['low']), 'close': float(row['close'])
+        })
+    socketio.emit('init_history', history)
+    
+    print(f"{Color.GREEN}✅ System Fully Armed. Connecting to Live API Feed...{Color.RESET}")
+    
+    # --- 📡 THE LIVE POLLING LOOP ---
+    last_processed_time = df.index[-1] # The timestamp of the last known candle
+    
+    while True:
+        # 1. Ask the Massive Engine for the current live state
+        # (You will need to import fetch_live_candle from xau_massive_engine)
+        latest_candle = fetch_live_candle() 
+        
+        if latest_candle is None:
+            socketio.sleep(10) # API failed, wait and retry
+            continue
+            
+        current_time = latest_candle.name
+        
+        # 2. Check if a NEW candle has closed
+        if current_time > last_processed_time:
+            last_processed_time = current_time
+            
+            candle_data = {
+                'time': int(current_time.timestamp()),
+                'open': float(latest_candle['open']), 'high': float(latest_candle['high']),
+                'low': float(latest_candle['low']), 'close': float(latest_candle['close'])
+            }
+            
+            # Push the live tick to the frontend chart
+            socketio.emit('new_candle', candle_data)
+            
+            # --- PHASE 1: MANAGE ACTIVE LIVE TRADE ---
+            closed_trade = tracker.update(candle_data)
+            if closed_trade:
+                socketio.emit('trade_closed', closed_trade)
+            
+            # --- PHASE 2: LOOK FOR NEW LIVE SETUPS ---
+            trend_strength = abs(latest_candle.get('gold_1h_trend', 0))
+            
+            if trend_strength > 4.5 and tracker.active_trade is None: 
+                print(f"\n{Color.YELLOW}⚡ LIVE MOMENTUM TRIGGER DETECTED! EVALUATING...{Color.RESET}")
+                
+                current_tape = generate_semantic_tape(latest_candle)
+                current_session = latest_candle.get('session', 'Unknown')
+                current_strat = "Trend_Following" if latest_candle.get('gold_1h_trend', 0) > 0 else "Breakout"
+                day_of_week = current_time.strftime('%A')
+                
+                rag_context = get_rag_context_string(rag_collection, current_tape)
+                graph_context = get_graph_context_string(knowledge_graph, current_session, current_strat)
+                market_state = f"Time: {current_time.strftime('%H:%M UTC')} ({day_of_week})\nSession: {current_session}\nStrategy: {current_strat}\nTape: {current_tape}"
+                
+                decision_json = evaluate_trade_setup(market_state, rag_context, graph_context)
+                
+                if decision_json:
+                    decision = decision_json.get("Decision", "PASS")
+                    direction = decision_json.get("Direction", "LONG")
+                    reasoning = decision_json.get("Primary_Reasoning", "No reasoning provided.")
+                    
+                    ai_payload = {
+                        "timestamp": int(current_time.timestamp()), "price": candle_data['close'],
+                        "decision": decision, "confidence": decision_json.get("Confidence_Score", 0),
+                        "reasoning": reasoning, "rag_distance": "Verified"
+                    }
+                    socketio.emit('ai_decision', ai_payload)
+                    
+                    if decision == "EXECUTE":
+                        # Execute logic goes here (same as backtester)
+                        pass 
+                        
+        # Wait 10 seconds before polling the API again to avoid rate-limits
+        socketio.sleep(10)
+
 @app.route('/')
 def index(): return render_template('dashboard.html')
 
 if __name__ == '__main__':
-    socketio.start_background_task(backtest_simulation_loop)
+    # socketio.start_background_task(backtest_simulation_loop)
+    socketio.start_background_task(live_execution_loop)
     socketio.run(app, debug=True, use_reloader=False)
