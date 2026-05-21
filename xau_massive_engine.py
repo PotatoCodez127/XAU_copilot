@@ -116,6 +116,50 @@ def engineer_xau_features(df):
 
     return df.dropna()
 
+def fetch_live_candle():
+    """Pings the Massive API for the current live state of XAUUSD."""
+    try:
+        # Massive.com requires a 'C:' prefix for forex tickers (C:XAUUSD)
+        # We fetch the last 1 hour of data to ensure we grab the latest 5-min closed bar.
+        end_time = int(time.time() * 1000)
+        start_time = end_time - (60 * 60 * 1000) 
+        
+        api_key = "YOUR_MASSIVE_API_KEY" # Replace with your real Massive API Key
+        
+        # The correct Custom Bars OHLC endpoint
+        url = f"https://api.massive.com/v2/aggs/ticker/C:XAUUSD/range/5/minute/{start_time}/{end_time}?adjusted=true&sort=desc&limit=1&apiKey={api_key}"
+        
+        response = requests.get(url)
+        data = response.json()
+        
+        if 'results' in data and len(data['results']) > 0:
+            latest = data['results'][0] # Grab the single latest 5-min candle
+            
+            # Map the Massive API response keys to your system's nomenclature
+            live_candle = {
+                'open': latest['o'],
+                'high': latest['h'],
+                'low': latest['l'],
+                'close': latest['c'],
+                'volume': latest.get('v', 0),
+                'time': latest['t'] / 1000.0  # Convert milliseconds to standard Unix timestamp
+            }
+            
+            # Wrap in a DataFrame for the feature engineering pipeline
+            live_matrix = pd.DataFrame([live_candle])
+            live_matrix.set_index(pd.to_datetime(live_matrix['time'], unit='s'), inplace=True)
+            
+            # Run your standard feature engineering so the AI gets the 1H Trend and DXY metrics
+            # live_features = engineer_xau_features(live_matrix)
+            # return live_features.iloc[-1]
+            
+            return live_matrix.iloc[-1]
+            
+        return None
+    except Exception as e:
+        print(f"API Error: {e}")
+        return None
+
 if __name__ == "__main__":
     matrix = build_macro_matrix(daysback=30)
     if matrix is not None:
