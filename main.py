@@ -18,20 +18,20 @@ def check_environment():
     """Ensures all necessary folders and API keys exist before booting."""
     print(f"{Color.CYAN}⚙️ Running pre-flight system checks...{Color.RESET}")
     
-    # Load environment variables
     load_dotenv()
     
     # 1. Check API Keys
-    # NOTE: The MASSIVE_API_KEY check was removed because the Omni-Agent 
-    # now runs entirely on 100% free, 10-minute delayed Yahoo Finance data.
+    if not os.getenv("TWELVEDATA_API_KEY"):
+        print(f"{Color.RED}❌ FATAL ERROR: TWELVEDATA_API_KEY missing from .env file.{Color.RESET}")
+        return False
         
     if not os.getenv("OLLAMA_API_KEYS"):
         print(f"{Color.YELLOW}⚠️ WARNING: OLLAMA_API_KEYS missing. The AI Judge will fail to connect.{Color.RESET}")
         
-    # 2. Ensure data directories exist for ChromaDB, Ledgers, and Logs
+    # 2. Ensure data directories exist
     os.makedirs("data", exist_ok=True)
     os.makedirs("data/xau_rag_db", exist_ok=True)
-    os.makedirs("results", exist_ok=True) # Added to support the new live_trade_log.csv
+    os.makedirs("results", exist_ok=True) 
     
     print(f"{Color.GREEN}✅ Environment checks passed.{Color.RESET}\n")
     return True
